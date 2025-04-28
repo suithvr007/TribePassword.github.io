@@ -1,1 +1,162 @@
-<h1> Zebra </h1>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Password Vault</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: #121212;
+      color: #ffffff;
+      margin: 0;
+      padding: 0;
+    }
+    .container {
+      max-width: 800px;
+      margin: auto;
+      padding: 20px;
+    }
+    h2, h3 {
+      color: #00bcd4;
+    }
+    .card {
+      background-color: #1f1f1f;
+      padding: 20px;
+      margin-bottom: 20px;
+      border-radius: 10px;
+      box-shadow: 0 2px 8px rgba(0, 188, 212, 0.2);
+    }
+    input[type="text"], input[type="password"] {
+      width: 100%;
+      padding: 10px;
+      margin: 10px 0;
+      border-radius: 5px;
+      border: 1px solid #444;
+      background-color: #2a2a2a;
+      color: #fff;
+    }
+    button {
+      padding: 10px 20px;
+      background-color: #00bcd4;
+      color: #fff;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #0097a7;
+    }
+    .last-changed {
+      font-size: 0.9em;
+      color: #aaa;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div id="loginDiv">
+      <h2>🔐 Secure Vault Login</h2>
+      <input type="password" id="accessKey" placeholder="Enter Access Key" />
+      <button onclick="checkAccessKey()">Login</button>
+    </div>
+
+    <div id="vaultDiv" style="display: none;">
+      <h2>🔒 Password Vault</h2>
+      <div id="accountList"></div>
+
+      <h3>Add New Entry</h3>
+      <input type="text" id="newUsername" placeholder="Username" />
+      <input type="password" id="newPassword" placeholder="Password" />
+      <input type="text" id="newWebsite" placeholder="Website URL" />
+      <button onclick="addNewEntry()">Add Entry</button>
+    </div>
+  </div>
+
+  <!-- Firebase SDK -->
+ <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+
+  <script>
+    // Firebase config
+    var firebaseConfig = {
+    apiKey: "AIzaSyAdQXobYdViArKQqLn2GYa1hzzhPU2YTwI",
+    authDomain: "zebrapassword.firebaseapp.com",
+    projectId: "zebrapassword",
+    storageBucket: "zebrapassword.firebasestorage.app",
+    messagingSenderId: "326302828139",
+    appId: "1:326302828139:web:8f1a856fde52b26fb5d32e",
+    measurementId: "G-G1NNTMSGE6"
+    };
+    firebase.initializeApp(firebaseConfig);
+    var db = firebase.firestore();
+
+    const accessKey = "ztribe"; // Demo key
+
+    function checkAccessKey() {
+      const inputKey = document.getElementById("accessKey").value;
+      if (inputKey === accessKey) {
+        document.getElementById("loginDiv").style.display = "none";
+        document.getElementById("vaultDiv").style.display = "block";
+        loadAccounts();
+      } else {
+        alert("Incorrect access key.");
+      }
+    }
+
+    function loadAccounts() {
+      db.collection("accounts").orderBy("lastChanged", "desc").onSnapshot(snapshot => {
+        const listDiv = document.getElementById("accountList");
+        listDiv.innerHTML = "";
+        snapshot.forEach(doc => {
+          const data = doc.data();
+          const lastChanged = data.lastChanged?.toDate().toLocaleString() || "N/A";
+          const card = document.createElement("div");
+          card.className = "card";
+          card.innerHTML = `
+            <p><strong>👤 Username:</strong> ${data.username}</p>
+            <p><strong>🌐 Website:</strong> <a href="${data.website}" target="_blank" style="color: #00bcd4;">${data.website}</a></p>
+            <p><strong>🔑 Password:</strong><br>
+              <input type="password" value="${data.password}" id="pass-${doc.id}" onchange="updatePassword('${doc.id}')" />
+            </p>
+            <p class="last-changed">🕒 Last Updated: ${lastChanged}</p>
+          `;
+          listDiv.appendChild(card);
+        });
+      });
+    }
+
+    function updatePassword(id) {
+      const newPass = document.getElementById(`pass-${id}`).value;
+      db.collection("accounts").doc(id).update({
+        password: newPass,
+        lastChanged: firebase.firestore.Timestamp.now()
+      });
+    }
+
+    function addNewEntry() {
+      const username = document.getElementById("newUsername").value;
+      const password = document.getElementById("newPassword").value;
+      const website = document.getElementById("newWebsite").value;
+
+      if (!username || !password || !website) {
+        alert("All fields are required!");
+        return;
+      }
+
+      db.collection("accounts").add({
+        username,
+        password,
+        website,
+        lastChanged: firebase.firestore.Timestamp.now()
+      });
+
+      document.getElementById("newUsername").value = "";
+      document.getElementById("newPassword").value = "";
+      document.getElementById("newWebsite").value = "";
+    }
+  </script>
+</body>
+</html>
